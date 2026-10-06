@@ -1,0 +1,5 @@
+{
+  "name": "datasentry-ml-service",
+  "version": "1.0.0",
+  "description": "DataSentry-AI ML Service - Python FastAPI"
+}

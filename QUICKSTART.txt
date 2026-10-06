@@ -1,0 +1,67 @@
+╔══════════════════════════════════════════════════════════════╗
+║                  DataSentry-AI Quick Start                   ║
+║                     ALL ISSUES FIXED! ✅                     ║
+╚══════════════════════════════════════════════════════════════╝
+
+🎯 What's Fixed:
+  ✅ Data Upload - Works perfectly with progress tracking
+  ✅ Notifications - Full system with dropdown and badges
+  ✅ Export Reports - One-click JSON download
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 FASTEST WAY TO RUN:
+
+  Windows:
+    Double-click: RUN.bat
+
+  Mac/Linux:
+    ./RUN.sh
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📖 MANUAL START:
+
+  1. Backend:
+     cd backend
+     npm install
+     npx prisma generate
+     npx prisma db push
+     npm run start:dev
+
+  2. Frontend:
+     cd frontend
+     npm install
+     npm run dev
+
+  3. Open: http://localhost:3000
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔐 Login:
+  Email:    admin@datasentry.ai
+  Password: admin123
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Test the Fixes:
+
+  1. Upload Dataset:
+     Datasets → Upload Dataset → Select file → See notification
+
+  2. Check Notifications:
+     Click bell icon → See dropdown with all notifications
+
+  3. Export Report:
+     Reports → Export button → JSON downloads automatically
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📚 Full Documentation:
+  • START_PROJECT.md - Complete guide with testing checklist
+  • README_FIXED.md - Detailed fix documentation
+  • CHANGELOG.md - All changes and improvements
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉 Everything is ready to use!

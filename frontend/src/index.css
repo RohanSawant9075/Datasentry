@@ -1,0 +1,125 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-text-primary font-sans antialiased;
+    min-height: 100vh;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+}
+
+@layer components {
+  /* Glass Card */
+  .glass-card {
+    @apply bg-background-card backdrop-blur-glass border border-border rounded-card shadow-card;
+    background: linear-gradient(
+      135deg,
+      rgba(82, 43, 91, 0.15) 0%,
+      rgba(43, 18, 76, 0.25) 100%
+    );
+  }
+
+  .glass-card-hover {
+    @apply transition-all duration-300 hover:shadow-card-hover hover:scale-[1.02];
+  }
+
+  /* Buttons */
+  .btn-primary {
+    @apply px-6 py-3 bg-brand-primary hover:bg-brand-muted text-text-primary font-medium rounded-button transition-all duration-200 shadow-md hover:shadow-lg;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 bg-brand-secondary hover:bg-brand-primary text-text-primary font-medium rounded-button transition-all duration-200 border border-border;
+  }
+
+  .btn-ghost {
+    @apply px-6 py-3 bg-transparent hover:bg-brand-secondary text-text-primary font-medium rounded-button transition-all duration-200;
+  }
+
+  /* Input */
+  .input {
+    @apply w-full px-4 py-3 bg-background-secondary border border-border rounded-button text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-pink focus:ring-2 focus:ring-brand-pink/20 transition-all duration-200;
+  }
+
+  /* Badge */
+  .badge {
+    @apply px-3 py-1 text-xs font-semibold rounded-full;
+  }
+
+  .badge-healthy {
+    @apply bg-status-healthy/20 text-status-healthy border border-status-healthy/30;
+  }
+
+  .badge-warning {
+    @apply bg-status-warning/20 text-status-warning border border-status-warning/30;
+  }
+
+  .badge-critical {
+    @apply bg-status-critical/20 text-status-critical border border-status-critical/30;
+  }
+
+  .badge-info {
+    @apply bg-status-info/20 text-status-info border border-status-info/30;
+  }
+
+  /* Progress Bar */
+  .progress-bar {
+    @apply w-full h-2 bg-background-secondary rounded-full overflow-hidden;
+  }
+
+  .progress-fill {
+    @apply h-full rounded-full transition-all duration-500;
+    background: linear-gradient(90deg, #522B5B 0%, #854F6C 50%, #DFB6B2 100%);
+  }
+
+  /* Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-background-secondary rounded-full;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-brand-muted rounded-full hover:bg-brand-pink;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-brand-pink via-brand-muted to-brand-primary bg-clip-text text-transparent;
+  }
+
+  .glow-text {
+    text-shadow: 0 0 20px rgba(223, 182, 178, 0.5);
+  }
+
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient 3s ease infinite;
+  }
+
+  @keyframes gradient {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+}

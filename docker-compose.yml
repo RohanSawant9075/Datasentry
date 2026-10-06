@@ -1,0 +1,144 @@
+version: '3.8'
+
+services:
+  # ===========================================
+  # PostgreSQL Database
+  # ===========================================
+  postgres:
+    image: postgres:14-alpine
+    container_name: datasentry-postgres
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-datasentry_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-datasentry_password}
+      POSTGRES_DB: ${POSTGRES_DB:-datasentry_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - datasentry-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U datasentry_user -d datasentry_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================
+  # Backend (NestJS)
+  # ===========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: datasentry-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-datasentry_user}:${POSTGRES_PASSWORD:-datasentry_password}@postgres:5432/${POSTGRES_DB:-datasentry_db}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      ML_SERVICE_URL: http://ml-service:8000
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      S3_BUCKET_DATASETS: ${S3_BUCKET_DATASETS:-datasentry-datasets-dev}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ml-service:
+        condition: service_started
+    networks:
+      - datasentry-network
+    command: sh -c "npx prisma generate && npx prisma db push && npm run start:dev"
+
+  # ===========================================
+  # ML Service (Python/FastAPI)
+  # ===========================================
+  ml-service:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    container_name: datasentry-ml-service
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      PYTHON_ENV: ${PYTHON_ENV:-development}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      S3_BUCKET_DATASETS: ${S3_BUCKET_DATASETS:-datasentry-datasets-dev}
+      S3_BUCKET_MODELS: ${S3_BUCKET_MODELS:-datasentry-models-dev}
+    volumes:
+      - ./ml-service:/app
+      - ml_models:/app/trained_models
+    networks:
+      - datasentry-network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # ===========================================
+  # Frontend (React + Vite) - Development
+  # ===========================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+      target: development
+    container_name: datasentry-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: http://localhost:3001/api
+      VITE_ML_SERVICE_URL: http://localhost:8000/api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - datasentry-network
+    command: npm run dev -- --host 0.0.0.0
+
+  # ===========================================
+  # pgAdmin (Optional - Database Management UI)
+  # ===========================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: datasentry-pgadmin
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@datasentry.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - datasentry-network
+    profiles:
+      - tools
+
+# ===========================================
+# Volumes
+# ===========================================
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  ml_models:
+    driver: local
+
+# ===========================================
+# Networks
+# ===========================================
+networks:
+  datasentry-network:
+    driver: bridge

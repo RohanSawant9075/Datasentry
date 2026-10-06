@@ -1,0 +1,384 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "linux-musl"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  ANALYST
+  VIEWER
+}
+
+enum DatasetStatus {
+  PROCESSING
+  HEALTHY
+  WARNING
+  CRITICAL
+  FAILED
+}
+
+enum SourceType {
+  CSV
+  JSON
+  EXCEL
+  API
+}
+
+enum Severity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AnomalyType {
+  OUTLIER
+  SPIKE
+  INVALID
+  MISSING_SPIKE
+  CATEGORICAL
+}
+
+enum DriftType {
+  NUMERICAL
+  CATEGORICAL
+  MISSING
+  SCHEMA
+}
+
+enum AlertStatus {
+  NEW
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+enum AlertCategory {
+  QUALITY
+  ANOMALY
+  DRIFT
+  RELIABILITY
+  MODEL
+  DECISION
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ModelStatus {
+  TRAINING
+  READY
+  FAILED
+  DEPRECATED
+}
+
+enum ReportType {
+  DATASET_SUMMARY
+  QUALITY
+  IMPACT
+  COMPREHENSIVE
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  name          String
+  role          UserRole  @default(ANALYST)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  datasets      Dataset[]
+  reports       Report[]
+  auditLogs     AuditLog[]
+  acknowledgedAlerts Alert[] @relation("AcknowledgedBy")
+  resolvedAlerts Alert[] @relation("ResolvedBy")
+
+  @@map("users")
+}
+
+model Dataset {
+  id           String        @id @default(uuid())
+  userId       String        @map("user_id")
+  name         String
+  sourceType   SourceType    @map("source_type")
+  status       DatasetStatus @default(PROCESSING)
+  s3Bucket     String?       @map("s3_bucket")
+  s3Key        String?       @map("s3_key")
+  fileSize     BigInt?       @map("file_size")
+  schema       Json?
+  rowCount     Int?          @map("row_count")
+  columnCount  Int?          @map("column_count")
+  version      Int           @default(1)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  profiles     DataProfile[]
+  qualityResults QualityResult[]
+  anomalies    Anomaly[]
+  driftResults DriftResult[]
+  reliabilityScores ReliabilityScore[]
+  modelPredictions ModelPrediction[]
+  modelImpacts ModelImpact[]
+  decisionResults DecisionResult[]
+  alerts       Alert[]
+  reports      Report[]
+
+  @@index([userId, createdAt])
+  @@map("datasets")
+}
+
+model DataProfile {
+  id            String   @id @default(uuid())
+  datasetId     String   @map("dataset_id")
+  columnName    String   @map("column_name")
+  dataType      String   @map("data_type")
+  missingCount  Int      @map("missing_count")
+  missingPct    Float    @map("missing_pct")
+  uniqueCount   Int      @map("unique_count")
+  duplicateCount Int     @map("duplicate_count")
+  minValue      String?  @map("min_value")
+  maxValue      String?  @map("max_value")
+  mean          Float?
+  median        Float?
+  stdDev        Float?   @map("std_dev")
+  statistics    Json?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  dataset       Dataset  @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@index([datasetId, columnName])
+  @@map("data_profiles")
+}
+
+model QualityResult {
+  id                    String   @id @default(uuid())
+  datasetId             String   @map("dataset_id")
+  overallScore          Float    @map("overall_score")
+  completenessScore     Float    @map("completeness_score")
+  validityScore         Float    @map("validity_score")
+  consistencyScore      Float    @map("consistency_score")
+  uniquenessScore       Float    @map("uniqueness_score")
+  timelinessScore       Float    @map("timeliness_score")
+  distributionScore     Float    @map("distribution_score")
+  issues                Json?
+  version               String
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  dataset               Dataset  @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@index([datasetId])
+  @@index([overallScore])
+  @@map("quality_results")
+}
+
+model Anomaly {
+  id              String       @id @default(uuid())
+  datasetId       String       @map("dataset_id")
+  columnName      String       @map("column_name")
+  anomalyType     AnomalyType  @map("anomaly_type")
+  severity        Severity
+  affectedCount   Int          @map("affected_count")
+  affectedRows    Json?        @map("affected_rows")
+  method          String
+  threshold       Float?
+  explanation     String
+  detectedAt      DateTime     @default(now()) @map("detected_at")
+  resolvedAt      DateTime?    @map("resolved_at")
+  status          String       @default("ACTIVE")
+
+  dataset         Dataset      @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@index([datasetId, severity])
+  @@map("anomalies")
+}
+
+model DriftResult {
+  id                  String    @id @default(uuid())
+  datasetId           String    @map("dataset_id")
+  referenceDatasetId  String?   @map("reference_dataset_id")
+  columnName          String    @map("column_name")
+  driftType           DriftType @map("drift_type")
+  driftMetric         String    @map("drift_metric")
+  driftScore          Float     @map("drift_score")
+  severity            Severity
+  referenceStats      Json?     @map("reference_stats")
+  currentStats        Json?     @map("current_stats")
+  detectedAt          DateTime  @default(now()) @map("detected_at")
+
+  dataset             Dataset   @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@index([datasetId, severity])
+  @@map("drift_results")
+}
+
+model ReliabilityScore {
+  id              String   @id @default(uuid())
+  datasetId       String   @map("dataset_id")
+  score           Float
+  qualityScore    Float    @map("quality_score")
+  anomalyScore    Float    @map("anomaly_score")
+  driftScore      Float    @map("drift_score")
+  timelinessScore Float    @map("timeliness_score")
+  components      Json?
+  version         String
+  calculatedAt    DateTime @default(now()) @map("calculated_at")
+
+  dataset         Dataset  @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@index([datasetId])
+  @@index([score])
+  @@map("reliability_scores")
+}
+
+model Model {
+  id              String       @id @default(uuid())
+  name            String
+  domainType      String       @map("domain_type")
+  description     String?
+  version         String
+  algorithm       String
+  hyperparameters Json?
+  s3ModelKey      String?      @map("s3_model_key")
+  featureNames    Json?        @map("feature_names")
+  targetName      String?      @map("target_name")
+  metrics         Json?
+  status          ModelStatus  @default(TRAINING)
+  trainedAt       DateTime?    @map("trained_at")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  predictions     ModelPrediction[]
+  impacts         ModelImpact[]
+  decisionResults DecisionResult[]
+
+  @@index([domainType, status])
+  @@map("models")
+}
+
+model ModelPrediction {
+  id              String   @id @default(uuid())
+  modelId         String   @map("model_id")
+  datasetId       String   @map("dataset_id")
+  predictionData  Json     @map("prediction_data")
+  confidence      Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  model           Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  dataset         Dataset  @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@index([modelId, datasetId])
+  @@map("model_predictions")
+}
+
+model ModelImpact {
+  id              String   @id @default(uuid())
+  modelId         String   @map("model_id")
+  datasetId       String   @map("dataset_id")
+  cleanMae        Float    @map("clean_mae")
+  corruptedMae    Float    @map("corrupted_mae")
+  cleanRmse       Float    @map("clean_rmse")
+  corruptedRmse   Float    @map("corrupted_rmse")
+  degradationPct  Float    @map("degradation_pct")
+  featureImpact   Json?    @map("feature_impact")
+  metrics         Json?
+  analyzedAt      DateTime @default(now()) @map("analyzed_at")
+
+  model           Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  dataset         Dataset  @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@index([modelId, datasetId])
+  @@map("model_impacts")
+}
+
+model DecisionResult {
+  id               String    @id @default(uuid())
+  datasetId        String    @map("dataset_id")
+  modelId          String    @map("model_id")
+  riskLevel        RiskLevel @map("risk_level")
+  confidence       Float
+  businessMetrics  Json?     @map("business_metrics")
+  recommendation   String
+  explanation      String
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  dataset          Dataset   @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  model            Model     @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@index([datasetId, modelId])
+  @@index([riskLevel])
+  @@map("decision_results")
+}
+
+model Alert {
+  id                String        @id @default(uuid())
+  datasetId         String?       @map("dataset_id")
+  category          AlertCategory
+  severity          Severity
+  title             String
+  description       String
+  explanation       String?
+  recommendedAction String?       @map("recommended_action")
+  status            AlertStatus   @default(NEW)
+  acknowledgedBy    String?       @map("acknowledged_by")
+  acknowledgedAt    DateTime?     @map("acknowledged_at")
+  resolvedBy        String?       @map("resolved_by")
+  resolvedAt        DateTime?     @map("resolved_at")
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  dataset           Dataset?      @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  acknowledgedByUser User?        @relation("AcknowledgedBy", fields: [acknowledgedBy], references: [id])
+  resolvedByUser    User?         @relation("ResolvedBy", fields: [resolvedBy], references: [id])
+
+  @@index([status, severity, createdAt])
+  @@map("alerts")
+}
+
+model Report {
+  id          String     @id @default(uuid())
+  datasetId   String?    @map("dataset_id")
+  userId      String     @map("user_id")
+  reportType  ReportType @map("report_type")
+  title       String
+  content     Json?
+  s3Key       String?    @map("s3_key")
+  format      String
+  generatedAt DateTime   @default(now()) @map("generated_at")
+
+  dataset     Dataset?   @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([datasetId, userId])
+  @@map("reports")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?  @map("user_id")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String?  @map("entity_id")
+  changes     Json?
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
